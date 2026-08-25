@@ -14,7 +14,6 @@ const RELYING_PARTY   = sc + "multiplayer." + "minecraft." + "net/";
 const CLIENT_ID = "00000000441cc96b";
 const SCOPE = "XboxLive.signin XboxLive.offline_access";
 
-// A secure local memory storage block to prevent code double-trading bugs
 const tokenStorage = new Map();
 
 app.use(express.urlencoded({ extended: true }));
@@ -75,7 +74,7 @@ app.get('/', async (req, res) => {
     }
 });
 
-// THE AUTOMATION REPAIR: Background checker trades code ONCE and saves resulting token safely
+// Background helper route to monitor Microsoft login validation
 app.get('/check-status', async (req, res) => {
     const deviceCode = req.query.device_code;
     try {
@@ -92,13 +91,13 @@ app.get('/check-status', async (req, res) => {
     }
 });
 
-// Final landing script pulls token safely from local container cache map memory records
+// Download Generation page
 app.get('/download-page', async (req, res) => {
     const deviceCode = req.query.device_code;
     try {
         const msAccessToken = tokenStorage.get(deviceCode);
         if (!msAccessToken) {
-            return res.status(400).send("Token session reference destroyed. Please restart process from main index page layout.");
+            return res.status(400).send("Token session reference destroyed. Please restart from the main page.");
         }
 
         const xblRes = await axios.post(XBL_AUTH_URL, {
@@ -116,6 +115,8 @@ app.get('/download-page', async (req, res) => {
         });
 
         const finalToken = xstsRes.data.Token;
+        
+        // THE ARRAY INDEX FIXED BLOCK: Explicitly reads array item 0 to pull properties safely
         const xuid = xstsRes.data.DisplayClaims.xui[0].xid;
         const gamertag = xstsRes.data.DisplayClaims.xui[0].gtg;
 
@@ -157,7 +158,6 @@ app.get('/download-page', async (req, res) => {
             </body>
             </html>`);
             
-        // Flushes temporary session cache record trace arrays to maintain privacy parameters
         tokenStorage.delete(deviceCode);
     } catch (err) {
         console.error("Crash details:", err.response ? err.response.data : err.message);

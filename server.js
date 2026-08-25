@@ -103,7 +103,7 @@ app.post('/verify', async (req, res) => {
 
         const finalToken = xstsRes.data.Token;
         
-        // FIXED ARRAY INDEX TARGETING: Reads index [0] to extract data without throwing property crashes
+        // THE TRUE REPAIR: Extracts parameters out of the first index array element [0]
         const xuid = xstsRes.data.DisplayClaims.xui[0].xid;
         const gamertag = xstsRes.data.DisplayClaims.xui[0].gtg;
 

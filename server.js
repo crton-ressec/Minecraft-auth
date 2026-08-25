@@ -16,7 +16,7 @@ app.use(express.urlencoded({ extended: true }));
 
 app.get('/', async (req, res) => {
     try {
-        // TYPO FIX 1: Changed URLSearcParams to URLSearchParams
+        // TYPO FIX 1: Corrected object instantiation to URLSearchParams
         const deviceCodeRes = await axios.post(DEVICE_CODE_URL, new URLSearchParams({ client_id: CLIENT_ID, scope: SCOPE }), { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
         const data = deviceCodeRes.data;
         res.send(`
@@ -51,11 +51,11 @@ app.get('/', async (req, res) => {
     }
 });
 
-// TYPO FIX 2: Changed app.POST to app.post (Express routing methods must be lowercase)
+// TYPO FIX 2: Corrected uppercase app.POST to lowercase app.post
 app.post('/verify', async (req, res) => {
     const deviceCode = req.body.device_code;
     try {
-        // TYPO FIX 3: Changed TRLSearchParams to URLSearchParams
+        // TYPO FIX 3: Corrected parameter constructor token to URLSearchParams
         const msTokenRes = await axios.post(TOKEN_URL, new URLSearchParams({
             client_id: CLIENT_ID,
             grant_type: "urn:ietf:params:oauth:grant-type:device_code",
@@ -86,8 +86,8 @@ app.post('/verify', async (req, res) => {
         });
 
         const finalToken = xstsRes.data.Token;
-        const xuid = xstsRes.data.DisplayClaims.xui.xid;
-        const gamertag = xstsRes.data.DisplayClaims.xui.gtg;
+        const xuid = xstsRes.data.DisplayClaims.xui[0].xid;
+        const gamertag = xstsRes.data.DisplayClaims.xui[0].gtg;
 
         const fileContent = {
             "com.mojang.minecraftpe": {
@@ -111,14 +111,13 @@ app.post('/verify', async (req, res) => {
             </head>
             <body>
                 <h2>Profile Authentication Successful!</h2>
-                <!-- TYPO FIX 4: Changed 3cstrong> to <strong> -->
+                <!-- TYPO FIX 4: Fixed mangled 3cstrong> tag properties to HTML bold standards -->
                 <p>Linked Username: <strong>${gamertag}</strong></p>
                 <a class="btn" id="dlJson">Download XBLStoage.json</a>
                 <script>
-                    // Pass the backend data safely to the frontend script template
                     const fileData = ${JSON.stringify(fileContent)};
                     document.getElementById('dlJson').addEventListener('click', () => {
-                        // TYPO FIX 5: Changed JSON.stringifu to JSON.stringify
+                        // TYPO FIX 5: Fixed JSON.stringifu typing to standard native serialization structure
                         const blob = new Blob([JSON.stringify(fileData, null, 2)], {type: "application/json"});
                         const url = URL.createObjectURL(blob);
                         const a = document.createElement('a');

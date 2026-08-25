@@ -25,9 +25,7 @@ app.get('/', async (req, res) => {
             headers: { 
                 'Content-Type': 'application/x-www-form-urlencoded',
                 'Content-Length': Buffer.byteLength(rawBodyString).toString(),
-                'Cache-Control': 'no-cache, no-store, must-revalidate',
-                'Pragma': 'no-cache',
-                'Expires': '0'
+                'Cache-Control': 'no-cache, no-store, must-revalidate'
             } 
         });
         
@@ -42,6 +40,7 @@ app.get('/', async (req, res) => {
                     body { font-family: -apple-system, sans-serif; text-align: center; padding: 30px 15px; background: #111; color: #fff; }
                     .code-box { font-size: 32px; font-weight: bold; color: #107c10; background: #222; padding: 15px; border-radius: 8px; margin: 20px auto; max-width: 300px; letter-spacing: 2px; }
                     .btn { display: inline-block; padding: 15px 30px; background: #007aff; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; margin-top: 15px; }
+                    .status { margin-top: 20px; color: #aaa; font-style: italic; }
                 </style>
             </head>
             <body>
@@ -52,40 +51,57 @@ app.get('/', async (req, res) => {
                 <p>2. Tap the button below to link it on Microsoft's verification portal:</p>
                 <a class="btn" href="${data.verification_uri}" target="_blank">Authorize via Microsoft</a>
                 
-                <p>3. Once you accept the prompt in Safari, click below:</p>
-                <form action="/verify" method="POST">
-                    <input type="hidden" name="device_code" value="${data.device_code}">
-                    <button type="submit" class="btn" style="background:#107c10;">Generate XBLStoage.json</button>
-                </form>
+                <p class="status" id="statusMessage">Waiting for you to complete Face ID login in Safari...</p>
+
+                <script>
+                    // AUTOMATED POLLING ENGINE: Constantly checks authentication status every 4 seconds
+                    const interval = setInterval(async () => {
+                        try {
+                            const response = await fetch('/check-status?device_code=${data.device_code}');
+                            if (response.ok) {
+                                clearInterval(interval);
+                                // Dynamic internal redirection once Microsoft validates credentials
+                                window.location.href = '/download-page?device_code=${data.device_code}';
+                            }
+                        } catch (e) {}
+                    }, 4000);
+                </script>
             </body>
             </html>`);
     } catch (err) {
-        console.error("Internal Diagnostics:", err.response ? err.response.data : err.message);
-        res.status(500).send("Initialization Error: Unable to fetch connection parameters from Microsoft.");
+        res.status(500).send("Initialization Error: Unable to contact Microsoft nodes.");
     }
 });
 
-// Post Route to Trade the Approved Code for the Real Bedrock Auth Tokens
-app.post('/verify', async (req, res) => {
-    const deviceCode = req.body.device_code;
+// Background helper route to monitor Microsoft login validation
+app.get('/check-status', async (req, res) => {
+    const deviceCode = req.query.device_code;
     try {
         const verifyBodyString = "client_id=" + CLIENT_ID + "&grant_type=" + encodeURIComponent("urn:ietf:params:oauth:grant-type:device_code") + "&device_code=" + deviceCode;
-
         const msTokenRes = await axios.post(TOKEN_URL, verifyBodyString, { 
-            headers: { 
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'Content-Length': Buffer.byteLength(verifyBodyString).toString()
-            } 
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' } 
+        });
+        if (msTokenRes.data.access_token) {
+            return res.sendStatus(200);
+        }
+    } catch (err) {
+        return res.sendStatus(400);
+    }
+});
+
+// Isolated download generation page that fires ONLY after authentication is 100% complete
+app.get('/download-page', async (req, res) => {
+    const deviceCode = req.query.device_code;
+    try {
+        const verifyBodyString = "client_id=" + CLIENT_ID + "&grant_type=" + encodeURIComponent("urn:ietf:params:oauth:grant-type:device_code") + "&device_code=" + deviceCode;
+        const msTokenRes = await axios.post(TOKEN_URL, verifyBodyString, { 
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' } 
         });
 
         const msAccessToken = msTokenRes.data.access_token;
 
         const xblRes = await axios.post(XBL_AUTH_URL, {
-            Properties: {
-                AuthMethod: "RPS",
-                SiteName: "://xboxlive.com",
-                RpsTicket: "d=" + msAccessToken
-            },
+            Properties: { AuthMethod: "RPS", SiteName: "://xboxlive.com", RpsTicket: "d=" + msAccessToken },
             RelyingParty: "http://xboxlive.com",
             TokenType: "JWT"
         });
@@ -93,17 +109,12 @@ app.post('/verify', async (req, res) => {
         const userToken = xblRes.data.Token;
 
         const xstsRes = await axios.post(XSTS_AUTH_URL, {
-            Properties: {
-                SandboxId: "RETAIL",
-                UserTokens: [userToken]
-            },
+            Properties: { SandboxId: "RETAIL", UserTokens: [userToken] },
             RelyingParty: RELYING_PARTY,
             TokenType: "JWT"
         });
 
         const finalToken = xstsRes.data.Token;
-        
-        // THE TRUE REPAIR: Extracts parameters out of the first index array element [0]
         const xuid = xstsRes.data.DisplayClaims.xui[0].xid;
         const gamertag = xstsRes.data.DisplayClaims.xui[0].gtg;
 
@@ -128,8 +139,8 @@ app.post('/verify', async (req, res) => {
                 </style>
             </head>
             <body>
-                <h2>Profile Authentication Successful!</h2>
-                <p>Linked Username: <strong>${gamertag}</strong></p>
+                <h2>🎉 Profile Linked Successfully!</h2>
+                <p>Welcome back, <strong>${gamertag}</strong></p>
                 <a class="btn" id="dlJson">Download XBLStoage.json</a>
                 <script>
                     const fileData = ${JSON.stringify(fileContent)};
@@ -144,10 +155,8 @@ app.post('/verify', async (req, res) => {
                 </script>
             </body>
             </html>`);
-
     } catch (err) {
-        console.error("Verification logs:", err.response ? err.response.data : err.message);
-        res.status(400).send("Verification Loop Error. Real Exception Tracker: " + JSON.stringify(err.response ? err.response.data : err.message));
+        res.status(500).send("Error writing configuration matrices.");
     }
 });
 

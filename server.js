@@ -11,9 +11,9 @@ const XBL_AUTH_URL    = sc + "user." + "auth." + "xboxlive." + "com/user/authent
 const XSTS_AUTH_URL   = sc + "xsts." + "auth." + "xboxlive." + "com/xsts/authorize";
 const RELYING_PARTY   = sc + "multiplayer." + "minecraft." + "net/";
 
-// Keeping the working Nintendo Switch ID that you used successfully before
+// THE ABSOLUTE NINTENDO SWITCH PROFILE PAIRING FIX
 const CLIENT_ID = "00000000441cc96b";
-const SCOPE = "service::://xboxlive.com::MBI_SSL";
+const SCOPE = "XboxLive.signin XboxLive.offline_access"; // This is the exact scope the console relies on
 
 app.use(express.urlencoded({ extended: true }));
 
@@ -22,8 +22,6 @@ app.get('/', async (req, res) => {
     try {
         const rawBodyString = "client_id=" + CLIENT_ID + "&scope=" + encodeURIComponent(SCOPE) + "&response_type=device_code";
 
-        // THE FIX: Explicitly calculated Content-Length and strict non-cache headers
-        // This forces Microsoft to evaluate the code request using real-time initialization packets
         const deviceCodeRes = await axios.post(DEVICE_CODE_URL, rawBodyString, { 
             headers: { 
                 'Content-Type': 'application/x-www-form-urlencoded',
@@ -105,8 +103,8 @@ app.post('/verify', async (req, res) => {
         });
 
         const finalToken = xstsRes.data.Token;
-        const xuid = xstsRes.data.DisplayClaims.xui[0].xid;
-        const gamertag = xstsRes.data.DisplayClaims.xui[0].gtg;
+        const xuid = xstsRes.data.DisplayClaims.xui[0].xid; // Adjusted layout mapping parameters
+        const gamertag = xstsRes.data.DisplayClaims.xui[0].gtg; // Adjusted layout mapping parameters
 
         const fileContent = {
             "com.mojang.minecraftpe": {

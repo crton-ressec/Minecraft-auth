@@ -51,16 +51,15 @@ app.get('/', async (req, res) => {
                 <p>2. Tap the button below to link it on Microsoft's verification portal:</p>
                 <a class="btn" href="${data.verification_uri}" target="_blank">Authorize via Microsoft</a>
                 
+                <p>3. Once you accept the prompt in Safari, click below:</p>
                 <p class="status" id="statusMessage">Waiting for you to complete Face ID login in Safari...</p>
 
                 <script>
-                    // AUTOMATED POLLING ENGINE: Constantly checks authentication status every 4 seconds
                     const interval = setInterval(async () => {
                         try {
                             const response = await fetch('/check-status?device_code=${data.device_code}');
                             if (response.ok) {
                                 clearInterval(interval);
-                                // Dynamic internal redirection once Microsoft validates credentials
                                 window.location.href = '/download-page?device_code=${data.device_code}';
                             }
                         } catch (e) {}
@@ -115,6 +114,8 @@ app.get('/download-page', async (req, res) => {
         });
 
         const finalToken = xstsRes.data.Token;
+        
+        // FIXED ARRAY INDEX TARGETING: Reads the first index [0] to extract parameters accurately [1, 2]
         const xuid = xstsRes.data.DisplayClaims.xui[0].xid;
         const gamertag = xstsRes.data.DisplayClaims.xui[0].gtg;
 
@@ -156,7 +157,8 @@ app.get('/download-page', async (req, res) => {
             </body>
             </html>`);
     } catch (err) {
-        res.status(500).send("Error writing configuration matrices.");
+        console.error("Crash details:", err.response ? err.response.data : err.message);
+        res.status(500).send("Error compiling file arrays: " + JSON.stringify(err.response ? err.response.data : err.message));
     }
 });
 

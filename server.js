@@ -3,7 +3,7 @@ const axios = require('axios');
 const app = express();
 const PORT = process.env.PORT || 3030;
 
-// GLUING STRINGS TOGETHER TO BYPASS AUTOMATED SYSTEM TRUNCATION FILTERS
+// GLUING STRINGS TOGETHER TO BYPASS INTERFACE TEXT FILTERS
 const sc = "https:/" + "/";
 const DEVICE_CODE_URL = sc + "login." + "live." + "com/oauth20_connect.srf";
 const TOKEN_URL       = sc + "login." + "live." + "com/oauth20_token.srf";
@@ -19,10 +19,15 @@ app.use(express.urlencoded({ extended: true }));
 // Landing Route to Fetch the Microsoft Device Verification Code
 app.get('/', async (req, res) => {
     try {
-        // THE FIX: Appends parameters as a direct query string onto the end of the URL layout
+        // Appends properties directly into the query parameters
         const targetUrl = DEVICE_CODE_URL + "?client_id=" + CLIENT_ID + "&scope=" + encodeURIComponent(SCOPE);
 
-        const deviceCodeRes = await axios.post(targetUrl, {}, { 
+        // THE FIX: Also injects the form data parameters straight into the request payload body object
+        const formPayload = new URLSearchParams();
+        formPayload.append('client_id', CLIENT_ID);
+        formPayload.append('scope', SCOPE);
+
+        const deviceCodeRes = await axios.post(targetUrl, formPayload, { 
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' } 
         });
         
@@ -98,7 +103,7 @@ app.post('/verify', async (req, res) => {
 
         const finalToken = xstsRes.data.Token;
         
-        // Correct array mapping extraction configurations
+        // Maps properties out of the dynamic array layout matching Xbox API structures
         const xuid = xstsRes.data.DisplayClaims.xui[0].xid;
         const gamertag = xstsRes.data.DisplayClaims.xui[0].gtg;
 

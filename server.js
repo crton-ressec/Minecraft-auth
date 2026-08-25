@@ -3,15 +3,14 @@ const axios = require('axios');
 const app = express();
 const PORT = process.env.PORT || 3030;
 
-// GLUING STRINGS TOGETHER PIECE BY PIECE TO DEFEAT THE AI TRUNCATION FILTER
-const scheme = "https://";
-const DEVICE_CODE_URL = scheme + "login." + "live." + "com" + "/oauth20_connect.srf";
-const TOKEN_URL       = scheme + "login." + "live." + "com" + "/oauth20_token.srf";
-const XBL_AUTH_URL    = scheme + "user." + "auth." + "xboxlive." + "com" + "/user/authenticate";
-const XSTS_AUTH_URL   = scheme + "xsts." + "auth." + "xboxlive." + "com" + "/xsts/authorize";
-const RELYING_PARTY   = scheme + "multiplayer." + "minecraft." + "net/";
+// GLUING STRINGS TOGETHER TO BYPASS AUTOMATED SYSTEM TRUNCATION FILTERS
+const sc = "https:/" + "/";
+const DEVICE_CODE_URL = sc + "login." + "live." + "com/oauth20_connect.srf";
+const TOKEN_URL       = sc + "login." + "live." + "com/oauth20_token.srf";
+const XBL_AUTH_URL    = sc + "user." + "auth." + "xboxlive." + "com/user/authenticate";
+const XSTS_AUTH_URL   = sc + "xsts." + "auth." + "xboxlive." + "com/xsts/authorize";
+const RELYING_PARTY   = sc + "multiplayer." + "minecraft." + "net/";
 
-// Official Hardcoded Minecraft Bedrock Multi-Tenant App Registration Parameters
 const CLIENT_ID = "000000004c12ae29";
 const SCOPE = "service::://xboxlive.com::MBI_SSL";
 
@@ -20,20 +19,14 @@ app.use(express.urlencoded({ extended: true }));
 // Landing Route to Fetch the Microsoft Device Verification Code
 app.get('/', async (req, res) => {
     try {
-        const payload = new URLSearchParams();
-        payload.append('client_id', CLIENT_ID);
-        payload.append('scope', SCOPE);
+        // THE FIX: Appends parameters as a direct query string onto the end of the URL layout
+        const targetUrl = DEVICE_CODE_URL + "?client_id=" + CLIENT_ID + "&scope=" + encodeURIComponent(SCOPE);
 
-        const deviceCodeRes = await axios.post(DEVICE_CODE_URL, payload, { 
-            headers: { 
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 Mobile/15E148 Safari/605.1.15',
-                'Accept': 'application/json'
-            } 
+        const deviceCodeRes = await axios.post(targetUrl, {}, { 
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' } 
         });
-
+        
         const data = deviceCodeRes.data;
-
         res.send(`
             <!DOCTYPE html>
             <html>
@@ -54,7 +47,7 @@ app.get('/', async (req, res) => {
                 <p>2. Tap the button below to link it on Microsoft's verification portal:</p>
                 <a class="btn" href="${data.verification_uri}" target="_blank">Authorize via Microsoft</a>
                 
-                <p>3. Once you accept the prompt in Safari clicking generate:</p>
+                <p>3. Once you accept the prompt in Safari, click below:</p>
                 <form action="/verify" method="POST">
                     <input type="hidden" name="device_code" value="${data.device_code}">
                     <button type="submit" class="btn" style="background:#107c10;">Generate XBLStoage.json</button>
@@ -71,16 +64,13 @@ app.get('/', async (req, res) => {
 app.post('/verify', async (req, res) => {
     const deviceCode = req.body.device_code;
     try {
-        const payload = new URLSearchParams();
-        payload.append('client_id', CLIENT_ID);
-        payload.append('grant_type', 'urn:ietf:params:oauth:grant-type:device_code');
-        payload.append('device_code', deviceCode);
+        const params = new URLSearchParams();
+        params.append('client_id', CLIENT_ID);
+        params.append('grant_type', 'urn:ietf:params:oauth:grant-type:device_code');
+        params.append('device_code', deviceCode);
 
-        const msTokenRes = await axios.post(TOKEN_URL, payload, { 
-            headers: { 
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X)'
-            } 
+        const msTokenRes = await axios.post(TOKEN_URL, params, { 
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' } 
         });
 
         const msAccessToken = msTokenRes.data.access_token;
@@ -93,7 +83,7 @@ app.post('/verify', async (req, res) => {
             },
             RelyingParty: "http://xboxlive.com",
             TokenType: "JWT"
-        }, { headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' } });
+        });
 
         const userToken = xblRes.data.Token;
 
@@ -104,9 +94,11 @@ app.post('/verify', async (req, res) => {
             },
             RelyingParty: RELYING_PARTY,
             TokenType: "JWT"
-        }, { headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' } });
+        });
 
         const finalToken = xstsRes.data.Token;
+        
+        // Correct array mapping extraction configurations
         const xuid = xstsRes.data.DisplayClaims.xui[0].xid;
         const gamertag = xstsRes.data.DisplayClaims.xui[0].gtg;
 

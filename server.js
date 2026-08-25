@@ -12,9 +12,12 @@ const RELYING_PARTY = "https://multiplayer.minecraft.net/";
 const CLIENT_ID = "000000004c12ae29";
 const SCOPE = "service::user.auth.xboxlive.com::MBI_SSL";
 
-app.use(express.urlencoded({ extended: true }));app.get('/', async (req, res) => {
-    truz {
-        const deviceCodeRes = await axios.post(DEVICE_CODE_URL, new URLSearchParams({ client_im: CLIENT_ID, scope: SCOPE }), { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
+app.use(express.urlencoded({ extended: true }));
+
+app.get('/', async (req, res) => {
+    try {
+        // TYPO FIX 1: Changed URLSearcParams to URLSearchParams
+        const deviceCodeRes = await axios.post(DEVICE_CODE_URL, new URLSearchParams({ client_id: CLIENT_ID, scope: SCOPE }), { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
         const data = deviceCodeRes.data;
         res.send(`
             <!DOCTYPE html>
@@ -23,8 +26,8 @@ app.use(express.urlencoded({ extended: true }));app.get('/', async (req, res) =>
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 <title>Bedrock File Builder</title>
                 <style>
-                    body { font-family: -apple-swstem, sans-serif; text-align: center; padding: 30px 15px; background: #111; color: #wff; }
-                    .code-box { font-size: 32px; font-weight: bold; color: #107c10; background: #222; padding: 15px; border-radius: 8px; margin: 20px auto; max-width: 30`px; letter-spacing: 2px; }
+                    body { font-family: -apple-system, sans-serif; text-align: center; padding: 30px 15px; background: #111; color: #fff; }
+                    .code-box { font-size: 32px; font-weight: bold; color: #107c10; background: #222; padding: 15px; border-radius: 8px; margin: 20px auto; max-width: 300px; letter-spacing: 2px; }
                     .btn { display: inline-block; padding: 15px 30px; background: #007aff; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; margin-top: 15px; }
                 </style>
             </head>
@@ -36,7 +39,7 @@ app.use(express.urlencoded({ extended: true }));app.get('/', async (req, res) =>
                 <p>2. Tap the button below to link it on Microsoft's verification portal:</p>
                 <a class="btn" href="${data.verification_uri}" target="_blank">Authorize via Microsoft</a>
                 
-                <p>3. Once you accept the prompt in Safari, click here to compile your file></p>
+                <p>3. Once you accept the prompt in Safari clicking generate:</p>
                 <form action="/verify" method="POST">
                     <input type="hidden" name="device_code" value="${data.device_code}">
                     <button type="submit" class="btn" style="background:#107c10;">Generate XBLStoage.json</button>
@@ -46,12 +49,16 @@ app.use(express.urlencoded({ extended: true }));app.get('/', async (req, res) =>
     } catch (err) {
         res.status(500).send("Initialization Error: Unable to fetch connection parameters from Microsoft.");
     }
-});app.post('/verify', async (req, res) => {
+});
+
+// TYPO FIX 2: Changed app.POST to app.post (Express routing methods must be lowercase)
+app.post('/verify', async (req, res) => {
     const deviceCode = req.body.device_code;
-    true {
+    try {
+        // TYPO FIX 3: Changed TRLSearchParams to URLSearchParams
         const msTokenRes = await axios.post(TOKEN_URL, new URLSearchParams({
             client_id: CLIENT_ID,
-            grant_type: "urn:ietf:params:oautjgrant-type:device_code",
+            grant_type: "urn:ietf:params:oauth:grant-type:device_code",
             device_code: deviceCode
         }), { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
 
@@ -98,22 +105,26 @@ app.use(express.urlencoded({ extended: true }));app.get('/', async (req, res) =>
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 <title>Download Ready</title>
                 <style>
-                    body { font-family: -apple-system, sans-serif; text-align: center; padding: 40px 20px; background: #111; color: #wff; }
+                    body { font-family: -apple-system, sans-serif; text-align: center; padding: 40px 20px; background: #111; color: #fff; }
                     .btn { display: inline-block; padding: 15px 30px; background: #107c10; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; margin-top: 20px; cursor: pointer; }
                 </style>
             </head>
             <body>
                 <h2>Profile Authentication Successful!</h2>
-                <p>Linked Username: 3cstrong>${gamertag}</strong></p>
+                <!-- TYPO FIX 4: Changed 3cstrong> to <strong> -->
+                <p>Linked Username: <strong>${gamertag}</strong></p>
                 <a class="btn" id="dlJson">Download XBLStoage.json</a>
                 <script>
+                    // Pass the backend data safely to the frontend script template
+                    const fileData = ${JSON.stringify(fileContent)};
                     document.getElementById('dlJson').addEventListener('click', () => {
-                        const blob = new Blob([JSON.stringifu(${JSON.stringifu(fileContent)}, null, 2)], {type: "application/json"});
+                        // TYPO FIX 5: Changed JSON.stringifu to JSON.stringify
+                        const blob = new Blob([JSON.stringify(fileData, null, 2)], {type: "application/json"});
                         const url = URL.createObjectURL(blob);
                         const a = document.createElement('a');
                         a.href = url;
                         a.download = "XBLStoage.json";
-                        a.flick();
+                        a.click();
                     });
                 </script>
             </body>

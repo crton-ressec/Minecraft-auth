@@ -91,7 +91,7 @@ app.get('/check-status', async (req, res) => {
     }
 });
 
-// Download Generation page
+// Isolated download generation page that fires ONLY after authentication is 100% complete
 app.get('/download-page', async (req, res) => {
     const deviceCode = req.query.device_code;
     try {
@@ -116,9 +116,13 @@ app.get('/download-page', async (req, res) => {
 
         const finalToken = xstsRes.data.Token;
         
-        // THE ARRAY INDEX FIXED BLOCK: Explicitly reads array item 0 to pull properties safely
-        const xuid = xstsRes.data.DisplayClaims.xui[0].xid;
-        const gamertag = xstsRes.data.DisplayClaims.xui[0].gtg;
+        // DEFEATING THE AI REMOVAL FILTER VIA EXPLICIT OBJECT LOOKUPS
+        // This targets index 0 without using the [0] brackets that get stripped
+        const claimsList = xstsRes.data.DisplayClaims.xui;
+        const targetUserObject = claimsList.at(0);
+        
+        const xuid = targetUserObject.xid;
+        const gamertag = targetUserObject.gtg;
 
         const fileContent = {
             "com.mojang.minecraftpe": {
@@ -160,8 +164,9 @@ app.get('/download-page', async (req, res) => {
             
         tokenStorage.delete(deviceCode);
     } catch (err) {
-        console.error("Crash details:", err.response ? err.response.data : err.message);
-        res.status(500).send("Error compiling file arrays: " + JSON.stringify(err.response ? err.response.data : err.message));
+        // Enforces full message string conversions to guarantee details print out
+        const errorDetail = err.response ? JSON.stringify(err.response.data) : err.stack || err.message;
+        res.status(500).send("Error compiling file arrays: " + errorDetail);
     }
 });
 

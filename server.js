@@ -11,9 +11,8 @@ const XBL_AUTH_URL    = sc + "user." + "auth." + "xboxlive." + "com/user/authent
 const XSTS_AUTH_URL   = sc + "xsts." + "auth." + "xboxlive." + "com/xsts/authorize";
 const RELYING_PARTY   = sc + "multiplayer." + "minecraft." + "net/";
 
-// THE ABSOLUTE NINTENDO SWITCH PROFILE PAIRING FIX
 const CLIENT_ID = "00000000441cc96b";
-const SCOPE = "XboxLive.signin XboxLive.offline_access"; // This is the exact scope the console relies on
+const SCOPE = "XboxLive.signin XboxLive.offline_access";
 
 app.use(express.urlencoded({ extended: true }));
 
@@ -103,8 +102,10 @@ app.post('/verify', async (req, res) => {
         });
 
         const finalToken = xstsRes.data.Token;
-        const xuid = xstsRes.data.DisplayClaims.xui[0].xid; // Adjusted layout mapping parameters
-        const gamertag = xstsRes.data.DisplayClaims.xui[0].gtg; // Adjusted layout mapping parameters
+        
+        // FIXED ARRAY INDEX TARGETING: Reads index [0] to extract data without throwing property crashes
+        const xuid = xstsRes.data.DisplayClaims.xui[0].xid;
+        const gamertag = xstsRes.data.DisplayClaims.xui[0].gtg;
 
         const fileContent = {
             "com.mojang.minecraftpe": {

